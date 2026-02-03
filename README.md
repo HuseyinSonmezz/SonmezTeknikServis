@@ -76,7 +76,7 @@ Projeyi kendi bilgisayarınızda çalıştırmak veya geliştirmek için:
 
 ## 🔒 Güvenlik Notları
 
-* **Firestore Kuralları:** Veri bütünlüğü için veritabanı kuralları; silme işlemleri sadece "Admin" yetkisine sahip kullanıcılara, okuma/yazma işlemleri ise sadece giriş yapmış personellere açık olacak şekilde yapılandırılmıştır.
+* **Firestore Kuralları:** Veri bütünlüğü için veritabanı kuralları; silme işlemleri sadece "Admin" yetkisine sahip kullanıcılara, okuma/yazma işlemleri ise sadece giriş yapmış personellere açık olacak şekilde yapılandırılması gerekir. Ancak bu sistem iki kullanıcılı olduğu için tüm yetkiler ortaktır.
 * **XSS Koruması:** Kullanıcı girdileri `escapeHTML` fonksiyonu ile temizlenerek ekrana basılmaktadır.
 
 ---
