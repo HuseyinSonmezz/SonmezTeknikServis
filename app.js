@@ -3,13 +3,9 @@ import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from
 import { getFirestore, collection, addDoc, query, where, onSnapshot, updateDoc, doc, deleteDoc, getDoc, Timestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyCtgO12GYcNWIWGWMGjHuaCImni3uo5VnQ",
-    authDomain: "sonmez-crm.firebaseapp.com",
-    projectId: "sonmez-crm",
-    storageBucket: "sonmez-crm.firebasestorage.app",
-    messagingSenderId: "777279068898",
-    appId: "1:777279068898:web:05a910bd647bd81e195cbb",
-    measurementId: "G-NDMN2JQS7L"
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    // ... Other Things
 };
 
 const app = initializeApp(firebaseConfig);
@@ -89,7 +85,7 @@ onAuthStateChanged(auth, (user) => {
         document.getElementById('nav-username').innerText = user.email.split('@')[0];
         
         // ADMIN KONTROLÜ
-        if(user.email === 'admin@servis.com') {
+        if(user.email === 'admin@xxxxxxxx.com') {
             document.body.classList.add('admin-mode');
             document.getElementById('user-role-label').innerText = "GELİŞTİRİCİ";
             document.getElementById('user-role-label').classList.replace('text-blue-400', 'text-yellow-400');
@@ -543,4 +539,5 @@ window.printPDF = async (id) => {
     doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.text(`TUTAR: ${formatCurrency(d.amount)}`, 150, y, null, null, "center");
     const pageHeight = doc.internal.pageSize.height; doc.setFontSize(10); doc.setFont("helvetica", "italic"); doc.text("Cihaz tesliminde bu fisi gosteriniz.", 105, pageHeight - 20, null, null, "center"); doc.text("Tesekkur ederiz.", 105, pageHeight - 15, null, null, "center");
     doc.save(`${transliterate(d.name).replace(/ /g, '_')}_fis.pdf`);
+
 };
