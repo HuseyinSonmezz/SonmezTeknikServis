@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teknik Servis Pro v3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: { 900: '#121212', 800: '#1E1E1E', 700: '#2D2D2D' },
+                        gold: { 400: '#FFD700', 500: '#D4AF37', 600: '#AA8C2C' }
+                    },
+                    screens: { 'xs': '480px' }
+                }
+            }
+        }
+    </script> 
+    <style>
+        /* VARSAYILAN TEMA (PERSONEL) */
+        body { background-color: #121212; color: #E4E4E7; font-family: 'Segoe UI', sans-serif; transition: all 0.5s ease; }
+        
+        .input-dark { 
+            background-color: #1E1E1E; border: 1px solid #2D2D2D; color: white; transition: all 0.3s ease;
+        }
+        .input-dark:focus { 
+            border-color: #4B5563; background-color: #252525; outline: none; box-shadow: 0 0 0 1px rgba(75, 85, 99, 0.5);
+        }
+
+        /* --- ADMIN TEMA (BURASI GERİ EKLENDİ) --- */
+        body.admin-mode {
+            background-color: #050505;
+            background-image: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #000000 100%);
+            font-family: 'Segoe UI', sans-serif !important; 
+        }
+        body.admin-mode h1, body.admin-mode h2, body.admin-mode h3, body.admin-mode h4 {
+            font-family: 'Orbitron', sans-serif !important;
+            color: #FFD700 !important; text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+        }
+        body.admin-mode .input-dark {
+            border-color: #AA8C2C; background-color: #0a0a0a; color: #FFD700;
+        }
+        body.admin-mode .input-dark:focus {
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+        body.admin-mode nav {
+            border-bottom: 1px solid #FFD700; background: rgba(0,0,0,0.95);
+        }
+        body.admin-mode .nav-btn.text-white {
+            color: #000 !important; background-color: #FFD700 !important; font-weight: bold;
+        }
+        body.admin-mode .group:hover {
+            border-color: #FFD700 !important; box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+        }
+    
+
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px);
+            position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 1rem;
+        }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #121212; }
+        ::-webkit-scrollbar-thumb { background: #2D2D2D; border-radius: 3px; }
+
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .tab-btn { border-bottom: 2px solid transparent; color: #6B7280; transition: 0.3s; cursor: pointer; }
+        .tab-btn.active { border-bottom: 2px solid #3B82F6; color: white; font-weight: bold; }
+
+        .filter-btn {
+            padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; color: #9CA3AF;
+            background-color: #1E1E1E; border: 1px solid #2D2D2D; transition: all 0.2s; white-space: nowrap;
+        }
+        .filter-btn:hover { background-color: #2D2D2D; color: white; }
+        .filter-btn.active { background-color: #2563EB; color: white; border-color: #2563EB; }
+
+        .fin-tab {
+            padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; cursor: pointer; transition: all 0.3s;
+            border: 1px solid transparent;
+        }
+        .fin-tab.active { background-color: #2D2D2D; color: white; border-color: #404040; font-weight: bold; }
+        .fin-tab:not(.active) { color: #6B7280; }
+        .fin-tab:not(.active):hover { color: #9CA3AF; background-color: #1A1A1A; }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col selection:bg-blue-500 selection:text-white">
+
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-[#121212]">
+        <div class="bg-[#1E1E1E] w-full max-w-sm rounded-2xl border border-[#2D2D2D] shadow-2xl overflow-hidden relative mx-4">
+            <div class="flex border-b border-[#2D2D2D] bg-[#181818]">
+                <button onclick="switchTab('staff')" id="btn-tab-staff" class="flex-1 py-4 text-sm font-bold tracking-wider tab-btn active">PERSONEL</button>
+                <button onclick="switchTab('customer')" id="btn-tab-customer" class="flex-1 py-4 text-sm font-bold tracking-wider tab-btn">CİHAZ SORGULA</button>
+            </div>
+
+            <div id="form-staff" class="p-8 space-y-6 fade-in">
+                <div class="text-center">
+                    <i class="fas fa-fingerprint text-4xl text-gray-500 mb-2"></i>
+                    <h2 class="text-xl font-bold text-white">YÖNETİM PANELİ</h2>
+                </div>
+                <form onsubmit="event.preventDefault(); login();" autocomplete="off">
+                    <div class="space-y-4">
+                        <input type="text" id="username-input" placeholder="Kullanıcı Adı" class="input-dark w-full p-4 rounded-xl text-center placeholder-gray-600" autocomplete="off">
+                        <input type="password" id="password-input" placeholder="••••••" class="input-dark w-full p-4 rounded-xl text-center placeholder-gray-600" autocomplete="new-password">
+                    </div>
+                    <button type="submit" class="w-full mt-6 bg-white hover:bg-gray-200 text-black font-bold py-4 rounded-xl transition shadow-lg">GİRİŞ YAP</button>
+                </form>
+                <p id="login-error" class="text-red-500 text-xs text-center font-bold hidden bg-red-900/10 py-2 rounded"></p>
+            </div>
+
+            <div id="form-customer" class="p-8 space-y-6 fade-in hidden">
+                <div class="text-center">
+                    <i class="fas fa-search text-4xl text-blue-500 mb-2"></i>
+                    <h2 class="text-xl font-bold text-white">CİHAZ DURUMU</h2>
+                    <p class="text-gray-500 text-xs mt-2">Takip kodunuzu giriniz.</p>
+                </div>
+                <div class="space-y-4">
+                    <input type="text" id="tracking-id" placeholder="KOD (Örn: 7X2k9...)" class="input-dark w-full p-4 rounded-xl text-center text-lg tracking-widest placeholder-gray-700 uppercase" autocomplete="off">
+                </div>
+                <button onclick="trackDevice()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl transition shadow-lg">SORGULA</button>
+                
+                <div id="tracking-result" class="hidden mt-4 p-4 bg-[#252525] rounded-xl border border-[#2D2D2D] text-center shadow-lg">
+                    <h3 id="res-customer" class="font-bold text-white text-lg">Müşteri Adı</h3>
+                    <p id="res-warranty" class="text-gray-400 text-xs mt-1">Garanti: -</p>
+                    <div class="my-2 w-full h-px bg-[#2D2D2D]"></div>
+                    <p id="res-status" class="text-blue-400 font-bold text-xl animate-pulse">DURUM</p>
+                    <p id="res-amount" class="text-gray-500 text-sm mt-2 font-mono">0 ₺</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-screen" class="hidden flex-grow flex flex-col">
+        <nav class="bg-[#1E1E1E]/90 backdrop-blur-md border-b border-[#2D2D2D] sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 md:px-8">
+                <div class="flex justify-between h-20 items-center">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-gradient-to-br from-gray-700 to-black rounded-lg flex items-center justify-center border border-[#2D2D2D]">
+                            <i class="fas fa-wrench text-gray-300 text-sm"></i>
+                        </div>
+                        <h1 class="font-bold text-lg text-white tracking-widest hidden xs:block">TEKNİK<span class="text-gray-500">SERVİS</span></h1>
+                    </div>
+                    
+                    <div class="hidden md:flex bg-[#121212] p-1 rounded-xl border border-[#2D2D2D]">
+                        <button onclick="showPage('customers')" class="nav-btn px-5 py-2 rounded-lg text-sm font-medium transition text-white bg-[#2D2D2D]">Servisler</button>
+                        <button onclick="showPage('stocks')" class="nav-btn px-5 py-2 rounded-lg text-sm font-medium transition text-gray-400 hover:text-white">Stok</button>
+                        <button onclick="showPage('stats')" class="nav-btn px-5 py-2 rounded-lg text-sm font-medium transition text-gray-400 hover:text-white">Finans</button>
+                        <button onclick="showPage('todos')" class="nav-btn px-5 py-2 rounded-lg text-sm font-medium transition text-gray-400 hover:text-white">Görevler</button>
+                    </div>
+
+                    <div class="flex items-center space-x-4">
+                        <div class="text-right">
+                            <span id="user-role-label" class="text-[9px] md:text-[10px] bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded border border-blue-900/50 uppercase font-bold">Personel</span>
+                            <p id="nav-username" class="text-xs md:text-sm font-bold text-white uppercase mt-0.5">...</p>
+                        </div>
+                        <button onclick="openLogoutModal()" class="w-10 h-10 rounded-full bg-[#121212] border border-[#2D2D2D] text-gray-400 hover:text-red-500 transition flex items-center justify-center">
+                            <i class="fas fa-power-off"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="md:hidden flex justify-around border-t border-[#2D2D2D] py-2 text-xs text-gray-400 bg-[#1E1E1E]">
+                    <button onclick="showPage('customers')">Servis</button>
+                    <button onclick="showPage('stocks')">Stok</button>
+                    <button onclick="showPage('stats')">Finans</button>
+                    <button onclick="showPage('todos')">Görev</button>
+                </div>
+            </div>
+        </nav>
+
+        <main class="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full space-y-8">
+            
+            <div id="page-customers" class="fade-in block">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                    <h2 class="text-2xl md:text-3xl font-bold text-white">Servis Listesi</h2>
+                    <div class="flex w-full md:w-auto gap-3">
+                        <input type="text" id="search-box" onkeyup="filterCustomers()" placeholder="Müşteri Ara..." class="input-dark w-full md:w-64 p-3 rounded-xl text-sm" autocomplete="off">
+                        <button onclick="openCustomerModal()" class="bg-white hover:bg-gray-200 text-black px-6 py-3 rounded-xl font-bold shadow-lg transition whitespace-nowrap">
+                            <i class="fas fa-plus mr-2"></i> YENİ
+                        </button>
+                    </div>
+                </div>
+                <div class="flex gap-2 overflow-x-auto pb-2 mb-4 no-scrollbar">
+                    <button onclick="setFilter('all')" id="filter-all" class="filter-btn active">Tümü</button>
+                    <button onclick="setFilter('Beklemede')" id="filter-Beklemede" class="filter-btn">Beklemede</button>
+                    <button onclick="setFilter('İşlemde')" id="filter-İşlemde" class="filter-btn">İşlemde</button>
+                    <button onclick="setFilter('Hazır')" id="filter-Hazır" class="filter-btn">Hazır</button>
+                    <button onclick="setFilter('Teslim Edildi')" id="filter-Teslim Edildi" class="filter-btn">Teslim Edildi</button>
+                </div>
+                <div id="customer-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+
+            <div id="page-stocks" class="fade-in hidden">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                    <h2 class="text-2xl md:text-3xl font-bold text-white">Stok Takibi</h2>
+                    <div class="flex gap-2 w-full md:w-auto">
+                        <input type="text" id="stock-search-input" onkeyup="filterStocks()" placeholder="Parça Ara..." class="input-dark w-full p-3 rounded-xl text-sm">
+                        <button onclick="openStockModal()" class="bg-[#2D2D2D] hover:bg-[#353535] text-white px-6 py-3 rounded-xl font-bold border border-[#404040] whitespace-nowrap">
+                            <i class="fas fa-box-open mr-2"></i> EKLE
+                        </button>
+                    </div>
+                </div>
+                <div id="stock-list" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+            </div>
+
+            <div id="page-stats" class="fade-in hidden">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                    <h2 class="text-2xl md:text-3xl font-bold text-white">Finansal Durum</h2>
+                    <div class="flex bg-[#121212] p-1 rounded-lg border border-[#2D2D2D]">
+                        <button onclick="switchFinTab('summary')" id="ftab-summary" class="fin-tab active">Özet</button>
+                        <button onclick="switchFinTab('report')" id="ftab-report" class="fin-tab">Rapor</button>
+                        <button onclick="switchFinTab('charts')" id="ftab-charts" class="fin-tab">Grafik</button>
+                    </div>
+                </div>
+
+                <div id="fin-view-summary" class="fin-view">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-gradient-to-br from-[#1E1E1E] to-[#151515] p-6 rounded-2xl border border-[#2D2D2D]">
+                            <p class="text-gray-500 text-xs font-bold uppercase">BUGÜNKÜ CİRO</p>
+                            <p id="stat-revenue-today" class="text-3xl font-bold text-white mt-2 font-mono">0 ₺</p>
+                        </div>
+                        <div class="bg-gradient-to-br from-[#1E1E1E] to-[#151515] p-6 rounded-2xl border border-[#2D2D2D]">
+                            <p class="text-gray-500 text-xs font-bold uppercase">BUGÜNKÜ GİDER</p>
+                            <p id="stat-cost-today" class="text-3xl font-bold text-red-400 mt-2 font-mono">0 ₺</p>
+                        </div>
+                        <div class="bg-gradient-to-br from-green-900/20 to-[#121212] p-6 rounded-2xl border border-green-900/30">
+                            <p class="text-green-500 text-xs font-bold uppercase">BUGÜNKÜ KÂR</p>
+                            <p id="stat-profit-today" class="text-3xl font-bold text-green-400 mt-2 font-mono">0 ₺</p>
+                        </div>
+                        <div class="bg-gradient-to-br from-blue-900/20 to-[#121212] p-6 rounded-2xl border border-blue-900/30">
+                            <p class="text-blue-500 text-xs font-bold uppercase">GENEL TOPLAM KÂR</p>
+                            <p id="stat-profit-total" class="text-2xl font-bold text-blue-400 mt-2 font-mono">0 ₺</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#1E1E1E] p-6 rounded-2xl border border-[#2D2D2D]">
+                        <h3 class="font-bold text-white text-lg mb-4">Hızlı Gider Ekle</h3>
+                        <form onsubmit="event.preventDefault(); addExpense();" class="flex gap-4 items-end">
+                            <div class="flex-grow">
+                                <label class="text-[10px] uppercase font-bold text-gray-500 block mb-1">Gider Adı</label>
+                                <input id="expense-name" type="text" placeholder="Örn: Yemek, Yakıt" class="input-dark w-full p-3 rounded-lg text-sm" required autocomplete="off">
+                            </div>
+                            <div class="w-32">
+                                <label class="text-[10px] uppercase font-bold text-gray-500 block mb-1">Tutar (TL)</label>
+                                <input id="expense-amount" type="number" placeholder="0" class="input-dark w-full p-3 rounded-lg font-mono text-sm" required>
+                            </div>
+                            <button type="submit" class="bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-900/50 p-3 rounded-lg font-bold transition">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </form>
+                        <div class="mt-6">
+                            <p class="text-xs text-gray-500 font-bold uppercase mb-2">Son Harcamalar</p>
+                            <div id="expense-list" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="fin-view-report" class="fin-view hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-[#1E1E1E] rounded-xl border border-[#2D2D2D] overflow-hidden">
+                            <div class="bg-[#252525] p-3 border-b border-[#2D2D2D] font-bold text-center text-gray-300 text-sm">GÜNLÜK (7 Gün)</div>
+                            <div id="report-daily" class="p-4 text-xs space-y-2"></div>
+                        </div>
+                         <div class="bg-[#1E1E1E] rounded-xl border border-[#2D2D2D] overflow-hidden">
+                            <div class="bg-[#252525] p-3 border-b border-[#2D2D2D] font-bold text-center text-gray-300 text-sm">HAFTALIK (4 Hafta)</div>
+                            <div id="report-weekly" class="p-4 text-xs space-y-2"></div>
+                        </div>
+                         <div class="bg-[#1E1E1E] rounded-xl border border-[#2D2D2D] overflow-hidden">
+                            <div class="bg-[#252525] p-3 border-b border-[#2D2D2D] font-bold text-center text-gray-300 text-sm">AYLIK (12 Ay)</div>
+                            <div id="report-monthly" class="p-4 text-xs space-y-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="fin-view-charts" class="fin-view hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-[#1E1E1E] p-4 rounded-xl border border-[#2D2D2D]">
+                            <h4 class="text-center text-gray-400 font-bold mb-4 text-xs uppercase tracking-wider">Son 7 Gün</h4>
+                            <div class="relative h-56 w-full"><canvas id="chart-daily"></canvas></div>
+                        </div>
+                        <div class="bg-[#1E1E1E] p-4 rounded-xl border border-[#2D2D2D]">
+                            <h4 class="text-center text-gray-400 font-bold mb-4 text-xs uppercase tracking-wider">Son 4 Hafta</h4>
+                            <div class="relative h-56 w-full"><canvas id="chart-weekly"></canvas></div>
+                        </div>
+                        <div class="bg-[#1E1E1E] p-4 rounded-xl border border-[#2D2D2D]">
+                            <h4 class="text-center text-gray-400 font-bold mb-4 text-xs uppercase tracking-wider">Son 12 Ay</h4>
+                            <div class="relative h-56 w-full"><canvas id="chart-monthly"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-todos" class="fade-in hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-2xl md:text-3xl font-bold text-white">Görev Panosu</h2>
+                        <p class="text-gray-500 text-xs mt-1">Tamamlananlar 48 saat sonra silinir.</p>
+                    </div>
+                    <button onclick="toggleModal('todo-modal')" class="w-12 h-12 rounded-full bg-[#2D2D2D] hover:bg-white hover:text-black transition flex items-center justify-center font-bold text-xl">+</button>
+                </div>
+                <div id="todo-list" class="flex flex-col space-y-3"></div>
+            </div>
+        </main>
+    </div>
+
+    <div id="customer-modal" class="modal-overlay hidden">
+        <div class="bg-[#1E1E1E] w-full max-w-2xl rounded-2xl border border-[#2D2D2D] shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-5 border-b border-[#2D2D2D] flex justify-between items-center bg-[#252525] rounded-t-2xl">
+                <h3 class="text-lg font-bold text-white uppercase tracking-wide">Servis Kartı</h3>
+                <button onclick="toggleModal('customer-modal')" class="text-gray-500 hover:text-white transition"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <form id="customer-form" class="p-6 overflow-y-auto custom-scrollbar space-y-5" autocomplete="off">
+                <input type="hidden" id="edit-id">
+                <div>
+                    <label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Müşteri Adı Soyadı</label>
+                    <input type="text" id="cust-name" required class="input-dark w-full p-3 rounded-lg" autocomplete="off">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">İrtibat No-1</label>
+                        <input type="text" id="cust-phone1" required class="input-dark w-full p-3 rounded-lg phone-input" placeholder="05xx xxx xx xx" maxlength="11" autocomplete="off">
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">İrtibat No-2</label>
+                        <input type="text" id="cust-phone2" class="input-dark w-full p-3 rounded-lg phone-input" placeholder="05xx xxx xx xx" maxlength="11" autocomplete="off">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Adres</label>
+                    <input type="text" id="cust-address" class="input-dark w-full p-3 rounded-lg" autocomplete="off">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Cihaz Bilgileri</label>
+                        <input type="text" id="cust-device" required class="input-dark w-full p-3 rounded-lg" placeholder="Model / Arıza" autocomplete="off">
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Garanti Tarihi</label>
+                        <input type="date" id="cust-warranty" class="input-dark w-full p-3 rounded-lg">
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-3 p-4 bg-[#181818] rounded-xl border border-[#2D2D2D]">
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-green-600 mb-1 block">Tutar</label>
+                        <input type="number" id="cust-amount" class="input-dark w-full p-2 rounded border-green-900/50 text-green-400 font-mono font-bold" placeholder="0">
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-red-500 mb-1 block">Maliyet</label>
+                        <input type="number" id="cust-cost" class="input-dark w-full p-2 rounded border-red-900/50 text-red-400 font-mono font-bold" placeholder="0">
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">Durum</label>
+                        <select id="cust-status" class="input-dark w-full p-2 rounded text-sm font-bold">
+                            <option value="Beklemede">Beklemede</option>
+                            <option value="İşlemde">İşlemde</option>
+                            <option value="Hazır">Hazır</option>
+                            <option value="Teslim Edildi">Teslim Edildi</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Sonuç Notu</label>
+                    <textarea id="cust-note" class="input-dark w-full p-3 rounded-lg h-20 text-sm"></textarea>
+                </div>
+                <div>
+                    <label class="text-[10px] uppercase font-bold text-green-500 mb-1 block"><i class="fab fa-whatsapp"></i> Whatsapp No</label>
+                    <input type="text" id="cust-wp" class="input-dark w-full p-3 rounded-lg border-green-900/50" placeholder="905xxxxxxxxx" autocomplete="off">
+                </div>
+                <div class="pt-4 flex justify-end space-x-3 border-t border-[#2D2D2D]">
+                    <button type="button" onclick="toggleModal('customer-modal')" class="px-6 py-3 rounded-lg text-gray-400 hover:bg-[#2D2D2D] hover:text-white transition">İptal</button>
+                    <button type="submit" id="save-btn" class="px-8 py-3 rounded-lg bg-white hover:bg-gray-200 text-black font-bold shadow-lg transition">KAYDET</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="stock-modal" class="modal-overlay hidden">
+        <div class="bg-[#1E1E1E] w-full max-w-sm rounded-2xl border border-[#2D2D2D] p-6 shadow-2xl">
+            <h3 class="text-lg font-bold text-white mb-4">Stok Ekle</h3>
+            <form id="stock-form" class="space-y-4" autocomplete="off">
+                <input type="text" id="stock-name" required placeholder="Parça Adı" class="input-dark w-full p-3 rounded-lg" autocomplete="off">
+                <input type="number" id="stock-qty" required placeholder="Adet" class="input-dark w-full p-3 rounded-lg font-mono">
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="toggleModal('stock-modal')" class="text-gray-400 hover:text-white px-4">İptal</button>
+                    <button type="submit" class="bg-white text-black px-6 py-2 rounded-lg font-bold">Ekle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="edit-stock-modal" class="modal-overlay hidden">
+        <div class="bg-[#1E1E1E] w-full max-w-xs rounded-2xl border border-[#2D2D2D] p-6 shadow-2xl">
+            <h3 class="text-lg font-bold text-white mb-4">Stok Düzenle</h3>
+            <input type="hidden" id="edit-stock-id">
+            <div class="space-y-3">
+                <label class="text-[10px] uppercase font-bold text-gray-500 block">Ürün Adı</label>
+                <input type="text" id="edit-stock-name" class="input-dark w-full p-3 rounded-lg">
+                <label class="text-[10px] uppercase font-bold text-gray-500 block">Stok Adedi</label>
+                <input type="number" id="edit-stock-qty" class="input-dark w-full p-3 rounded-lg font-mono">
+            </div>
+            <div class="flex justify-end space-x-2 pt-4">
+                <button onclick="toggleModal('edit-stock-modal')" class="text-gray-400 hover:text-white px-4">İptal</button>
+                <button onclick="saveStockEdit()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg font-bold">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="delete-stock-modal" class="modal-overlay hidden">
+        <div class="bg-[#1E1E1E] w-full max-w-xs rounded-2xl border border-[#2D2D2D] p-6 text-center">
+             <div class="w-12 h-12 bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+                <i class="fas fa-box-open text-xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">Stoğu Sil?</h3>
+            <p class="text-gray-400 text-sm mb-6">Bu parçayı stoktan kaldırmak istediğinize emin misiniz?</p>
+            <input type="hidden" id="delete-stock-id">
+            <div class="flex gap-3">
+                <button onclick="toggleModal('delete-stock-modal')" class="flex-1 py-3 rounded-xl bg-[#2D2D2D] text-gray-300 hover:text-white font-bold">Vazgeç</button>
+                <button onclick="confirmStockDelete()" class="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold">SİL</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="edit-expense-modal" class="modal-overlay hidden">
+        <div class="bg-[#1E1E1E] w-full max-w-xs rounded-2xl border border-[#2D2D2D] p-6 shadow-2xl">
+            <h3 class="text-lg font-bold text-white mb-4">Gider Düzenle</h3>
+            <input type="hidden" id="edit-expense-id">
+            <div class="space-y-3">
+                <label class="text-[10px] uppercase font-bold text-gray-500 block">Gider Adı</label>
+                <input type="text" id="edit-expense-name" class="input-dark w-full p-3 rounded-lg">
+                <label class="text-[10px] uppercase font-bold text-gray-500 block">Tutar</label>
+                <input type="number" id="edit-expense-amount" class="input-dark w-full p-3 rounded-lg font-mono">
+            </div>
+            <div class="flex justify-end space-x-2 pt-4">
+                <button onclick="toggleModal('edit-expense-modal')" class="text-gray-400 hover:text-white px-4">İptal</button>
+                <button onclick="saveExpenseEdit()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg font-bold">Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="delete-expense-modal" class="modal-overlay hidden">
+        <div class="bg-[#1E1E1E] w-full max-w-xs rounded-2xl border border-[#2D2D2D] p-6 text-center">
+            <div class="w-12 h-12 bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+                <i class="fas fa-trash text-xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">Gideri Sil?</h3>
+            <p class="text-gray-400 text-sm mb-6">Bu gideri silmek istediğinize emin misiniz?</p>
+            <input type="hidden" id="delete-expense-id">
+            <div class="flex gap-3">
+                <button onclick="toggleModal('delete-expense-modal')" class="flex-1 py-3 rounded-xl bg-[#2D2D2D] text-gray-300 hover:text-white font-bold">Vazgeç</button>
+                <button onclick="confirmExpenseDelete()" class="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold">SİL</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="todo-modal" class="modal-overlay hidden">
+        <div class="bg-[#1E1E1E] w-full max-w-md rounded-2xl border border-[#2D2D2D] p-6">
+            <h3 class="text-lg font-bold text-white mb-4">Ortak Görev Ekle</h3>
+            <div class="flex gap-2">
+                <input id="todo-text" class="input-dark w-full p-3 rounded-lg" placeholder="Ne yapılması gerekiyor?" autocomplete="off">
+                <button onclick="addTodo()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 rounded-lg font-bold"><i class="fas fa-plus"></i></button>
+            </div>
+            <button onclick="toggleModal('todo-modal')" class="text-xs text-gray-500 mt-4 underline w-full text-center hover:text-gray-300">Kapat</button>
+        </div>
+    </div>
+
+    <div id="edit-todo-modal" class="modal-overlay hidden">
+        <div class="bg-[#1E1E1E] w-full max-w-md rounded-2xl border border-[#2D2D2D] p-6 shadow-2xl">
+            <h3 class="text-lg font-bold text-white mb-4">Görevi Düzenle</h3>
+            <input type="hidden" id="edit-todo-id">
+            <div class="space-y-3">
+                <label class="text-[10px] uppercase font-bold text-gray-500 block">Görev</label>
+                <input type="text" id="edit-todo-text" class="input-dark w-full p-3 rounded-lg">
+            </div>
+            <div class="flex justify-end space-x-2 pt-4">
+                <button onclick="toggleModal('edit-todo-modal')" class="text-gray-400 hover:text-white px-4">İptal</button>
+                <button onclick="saveTodoEdit()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg font-bold">Kaydet</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="delete-todo-modal" class="modal-overlay hidden">
+        <div class="bg-[#1E1E1E] w-full max-w-xs rounded-2xl border border-[#2D2D2D] p-6 text-center">
+            <div class="w-12 h-12 bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+                <i class="fas fa-trash text-xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">Görevi Sil?</h3>
+            <p class="text-gray-400 text-sm mb-6">Bu görevi silmek istediğinize emin misiniz?</p>
+            <input type="hidden" id="delete-todo-id">
+            <div class="flex gap-3">
+                <button onclick="toggleModal('delete-todo-modal')" class="flex-1 py-3 rounded-xl bg-[#2D2D2D] text-gray-300 hover:text-white font-bold">Vazgeç</button>
+                <button onclick="confirmTodoDelete()" class="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold">SİL</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="logout-modal" class="modal-overlay hidden">
+        <div class="bg-[#1E1E1E] w-full max-w-xs rounded-2xl border border-[#2D2D2D] p-6 text-center">
+            <div class="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4 text-white">
+                <i class="fas fa-sign-out-alt text-xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">Çıkış Yapılıyor</h3>
+            <p class="text-gray-400 text-sm mb-6">Oturumu kapatmak istediğinize emin misiniz?</p>
+            <div class="flex gap-3">
+                <button onclick="toggleModal('logout-modal')" class="flex-1 py-3 rounded-xl bg-[#2D2D2D] text-gray-300 hover:text-white font-bold">Vazgeç</button>
+                <button onclick="confirmLogout()" class="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold">Çıkış</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="delete-modal" class="modal-overlay hidden">
+        <div class="bg-[#1E1E1E] w-full max-w-xs rounded-2xl border border-[#2D2D2D] p-6 text-center">
+            <div class="w-12 h-12 bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+                <i class="fas fa-trash text-xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">Kaydı Sil?</h3>
+            <p class="text-gray-400 text-sm mb-6">Bu işlem geri alınamaz. Emin misiniz?</p>
+            <div class="flex gap-3">
+                <button onclick="toggleModal('delete-modal')" class="flex-1 py-3 rounded-xl bg-[#2D2D2D] text-gray-300 hover:text-white font-bold">İptal</button>
+                <button onclick="confirmDelete()" class="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold">Sil</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
