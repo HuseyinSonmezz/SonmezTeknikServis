@@ -60,7 +60,7 @@ Projeyi kendi bilgisayarınızda çalıştırmak veya geliştirmek için:
 
 1.  **Projeyi Klonlayın:**
     ```bash
-    git clone [https://github.com/kullaniciadiniz/sonmez-teknik-erp.git](https://github.com/kullaniciadiniz/sonmez-teknik-erp.git)
+    git clone https://github.com/HuseyinSonmezz/sonmez-teknik-erp.git
     cd sonmez-teknik-erp
     ```
 
